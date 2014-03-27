@@ -1,0 +1,42 @@
+#!/usr/bin/php
+<?php
+	
+	echo "\nConvert all ./map/*.tmx files to binary files in ./\n\n";
+	$sourceFiles = array();
+
+	if(!file_exists('map')) die('No map directory found');
+	$dir = opendir('map');
+	while($file = readdir($dir)) {
+		if(preg_match('/\.tmx/', $file)) {
+			$sourceFiles[] = $file;
+		}
+	}
+	closedir($dir);
+	if(empty($sourceFiles)) die('No .tmx map files found.');
+
+	foreach($sourceFiles as $file) {
+		echo 'Reading ./map/'.$file."\n";
+		$xml    = simplexml_load_file('./map/'.$file);
+		$width  = (int)$xml->layer['width'];
+		$height = (int)$xml->layer['height'];
+		$map = array(
+			$width,
+			$height
+		);
+		echo 'Mapsize: '.$width.' x '.$height." Tiles.\n";
+		foreach($xml->layer->data->tile as $tile) {
+			$map[] = (int)$tile['gid']-1;
+		}		
+		$destination = preg_replace('/\.tmx/', '.bin', $file);
+		echo 'Writing '.$destination."\n";
+		$fp = fopen($destination, 'w+');
+		for($i=0; $i<sizeof($map); $i++) {
+			fwrite($fp, chr($map[$i]));
+		}
+		fclose($fp);
+print_r($map);
+		echo "\n";
+	}
+	echo "\nReady!\n\n";
+
+?>
