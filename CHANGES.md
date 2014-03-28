@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+*2014-03-28*  Build level now also copies object data
+
 *2014-03-28*  Build level centered on game screen
 
 *2014-03-28*  Build Level background

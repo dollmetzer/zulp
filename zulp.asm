@@ -174,9 +174,10 @@ headline:			.byte  154,147,151 // light blue, CLR, gray 1
  * -------------------
  * Number of level in Akkumulator
  */
-loadLevel:			tay
+loadLevel:			sta level
+					tay
 					lda levelPtrLo,y	// write base address of level in $f8/$f9
-					sta ptrObject
+					sta ptrObject		// 'lending' the pointer for calculation
 					lda levelPtrHi,y
 					sta ptrObject+1
 
@@ -209,18 +210,24 @@ loadLevel:			tay
 					adc #$00
 					sta ptrMapdata+1
 
-					// write pointer to screen with x offset
+					// write pointer to object data
+					ldy level
+					lda levelPtrLo,y	// write base address of level in $f8/$f9
+					sta ptrObject		// 'lending' the pointer for calculation
+					lda levelPtrHi,y
+					sta ptrObject+1
+
+					// write pointer to screen with y and x offset
 					clc
-//					lda #<1104
 					ldy mapOffsetY
-					lda screenLinesLo,y
-					adc mapOffsetX
+					lda screenLinesLo,y	// get low byte of first screen line
+					adc mapOffsetX		// add x offset
 					sta ptrScreen
-//					lda #>1104
 					lda screenLinesHi,y
 					adc #$00
 					sta ptrScreen+1
 
+					// paint map on screen
 					ldx #$00		// rows
 paintLvl1:			ldy #$00		// columns
 paintLvl2:			lda (ptrMapdata),y
@@ -248,6 +255,58 @@ paintLvl2:			lda (ptrMapdata),y
 					inx
 					cpx mapHeight
 					bne paintLvl1
+
+					// clear object table
+					ldy #$00
+					lda #$00
+clearObjTable:		sta objectTable,y
+					iny
+					bne clearObjTable
+
+					// load objectdata
+					ldy level
+					lda levelObjPtrLo,y
+					sta ptrObject
+					lda levelObjPtrHi,y
+					sta ptrObject+1
+
+					lda #<objectTable-1
+					sta ptrScreen		// 'lending' the pointer
+					lda #>objectTable-1
+					sta ptrScreen+1
+
+					ldy #$00
+					lda (ptrObject),y
+					sta objectNumber	// get number of objects
+
+					tax					// number of objects
+copyObjectTable:	ldy #$10			// object has 16 bytes
+copyObjectTable1:	lda (ptrObject),y
+					sta (ptrScreen),y
+					dey
+					bne copyObjectTable1
+
+					clc
+					lda ptrObject
+					adc #$10
+					sta ptrObject
+					lda ptrObject+1
+					adc #$00
+					sta ptrObject+1
+
+					clc
+					lda ptrScreen
+					adc #$10
+					sta ptrScreen
+					lda ptrScreen+1
+					adc #$00
+					sta ptrScreen+1
+
+					dex
+					bne copyObjectTable
+
+// missing: x and y offset map/screen correction
+
 					rts
 
 
@@ -262,6 +321,7 @@ freight:			.byte $00			// current freight color (0=none)
 lives:				.byte $00			// remaining lives
 energy:				.byte $00, $00		// BCD coded energy level
 score:				.byte $00, $00, $00	// BCD coded game score
+objectNumber:		.byte $00			// Number of objects in current level
 
 objectTable:		.fill 256, 0		// 16 Objects with 16 Bytes
 
@@ -365,17 +425,70 @@ colorLinesHi:		.byte >55376
  * L E V E L S
  * -----------
  */
-levelPtrLo:	.byte <level1
-			.byte <level2
-			.byte <level3
+levelPtrLo:			.byte <level1
+					.byte <level2
+					.byte <level3
 
-levelPtrHi:	.byte >level1
-			.byte >level2
-			.byte >level3
+levelPtrHi:			.byte >level1
+					.byte >level2
+					.byte >level3
 
-level1:		.import binary "level_1.bin"
-level2:		.import binary "level_2.bin"
-level3:		.import binary "level_3.bin"
+level1:				.import binary "level_1.bin"
+level2:				.import binary "level_2.bin"
+level3:				.import binary "level_3.bin"
+
+
+levelObjPtrLo:		.byte <levelObjects1
+					.byte <levelObjects2
+					.byte <levelObjects3
+
+levelObjPtrHi:		.byte >levelObjects1
+					.byte >levelObjects2
+					.byte >levelObjects3
+
+/**
+ * O B J E C T L I S T S
+ * ---------------------
+ * 0  state			- 0=off, 1=on, 2=visible
+ * 1  xpos			- xpos on screen
+ * 2  ypos			- ypos on screen (ignoring first two lines)
+ * 3  basetile		- Number of first tile, direction 1, phase 1
+ * 4  shift0		- Add for direction 0
+ * 5  shift1		- Add for direction 1
+ * 6  shift2		- Add for direction 2
+ * 7  shift3		- Add for direction 3
+ * 8  maxphase		- max phase (0=one phase, 1=2phases)
+ * 9  phase			- current phase
+ * 10 direction		- current direction
+ * 11 color			- number of color
+ * 12 animationNr	- Number of the animation
+ * 13 contactNr		- Number of the action when contact
+ * 14 animateDelay	- Number of frames to wait for next step
+ * 15 waitstate		- Current remaing frames to skip before next step 
+ */
+levelObjects1:		.byte   5	// 3 objects
+					.byte   3,  8,  2,128,  0,  4,  8, 12,  1,  0,  0,  1,  1,  0,  4,  0 // player
+					.byte   3,  4,  2,144,  0,  0,  0,  0,  4,  0,  0,  2,  2,  0,  4,  0 // object 2
+					.byte   3, 12,  2,145,  0,  0,  0,  0,  4,  0,  0,  3,  2,  0,  4,  0 // object 4
+
+levelObjects2:		.byte   5	// 5 objects
+					.byte   3,  8,  4,128,  0,  4,  8, 12,  1,  0,  0,  1,  1,  0,  4,  0 // player
+					.byte   3,  3,  2,144,  0,  0,  0,  0,  4,  0,  0,  2,  2,  0,  4,  0 // object 2
+					.byte   3, 13,  5,144,  0,  0,  0,  0,  4,  0,  0,  3,  2,  0,  5,  0 // object 3
+					.byte   3,  1,  2,145,  0,  0,  0,  0,  4,  0,  0,  3,  2,  0,  4,  0 // object 4
+					.byte   3, 15,  5,145,  0,  0,  0,  0,  4,  0,  0,  2,  2,  0,  5,  0 // object 5
+
+levelObjects3:		.byte   9	// 5 objects
+					.byte   3,  7,  3,128,  0,  4,  8, 12,  1,  0,  0,  1,  1,  0,  4,  0 // player
+					.byte   3,  1,  2,144,  0,  0,  0,  0,  4,  0,  0,  2,  2,  0,  5,  0 // object 2
+					.byte   3,  1,  4,144,  0,  0,  0,  0,  4,  0,  0,  3,  2,  0,  5,  0 // object 3
+					.byte   3, 13,  4,145,  0,  0,  0,  0,  4,  0,  0,  3,  2,  0,  5,  0 // object 4
+					.byte   3, 13,  2,145,  0,  0,  0,  0,  4,  0,  0,  2,  2,  0,  5,  0 // object 5
+					.byte   3,  3,  5,145,  0,  0,  0,  0,  4,  0,  0,  2,  2,  0,  5,  0 // object 6
+					.byte   3, 11,  1,145,  0,  0,  0,  0,  4,  0,  0,  2,  2,  0,  5,  0 // object 7
+					.byte   3,  5,  1,145,  0,  0,  0,  0,  4,  0,  0,  2,  2,  0,  5,  0 // object 6
+					.byte   3,  9,  5,145,  0,  0,  0,  0,  4,  0,  0,  2,  2,  0,  5,  0 // object 7
+
 
 			.pc = $3000
 charset:	.import binary "font.bin"
