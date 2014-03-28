@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+*2014-03-28*  Object Animation loop working
+
 *2014-03-28*  Object Handling Loop and Object Plot working
 
 *2014-03-28*  map offset correction for object X and Y position

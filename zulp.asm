@@ -20,6 +20,7 @@
 .var screenColor	= $d800	// start of color memory
 
 // zeropage variables
+.var bufPhase		= $ef	// current animation phase
 .var mapWidth		= $f0	// width of the current game map
 .var mapHeight		= $f1	// height of the current game map
 .var mapOffsetX		= $f2	// x offset of the map on screen
@@ -56,9 +57,6 @@ startProgram:		jsr initProgram
 					sta mode
 					jsr gameStart
 					
-					// just a quick test...
-					jsr objectHandle
-
 					// todo: wait for mode 0 and return to title
 					rts
 
@@ -109,6 +107,7 @@ titleScreen:		.byte 154,147 // light blue, CLR
 					.byte  0, 0, 0
 
 
+
 /**
  * G a m e   s t a r t
  * -------------------
@@ -127,8 +126,24 @@ gameStart:			lda #$00		// reset level
 					sta energy+1
 
 					jsr gameScreen	// prepare screen
-					lda #$00		// load level 0
+					lda level		
 					jsr loadLevel
+
+					sei				// disable interrupt
+					lda #<gameLoop	// set IRQ Pointer to gameloop
+					sta $0314
+					lda #>gameLoop
+					sta $0315
+					asl $d019		//
+					lda #$7b		//
+					sta $dc0d		// CIA Interrupt Control and Status
+					lda #$81		// set interrupt request to raster
+					sta $d01a
+					lda #$1b 		// set raster row
+					sta $d011 
+					lda #$c0 
+					sta $d012
+					cli
 
 					rts
 
@@ -347,6 +362,28 @@ correctObjOffset:	ldy #$01	// xpos
 
 
 /**
+ * G a m e   L o o p
+ * -----------------
+ * Raster interrupt routine
+ */
+gameLoop:			asl $d019		// delete IRQ flag
+					lda #$0b
+					sta $d020
+
+					jsr objectHandle
+				
+					lda #$00
+					sta $d020
+					pla				// restore a, y and x
+					tay
+					pla
+					tax
+					pla
+					rti				// return from interrupt
+
+
+
+/**
  * O b j e c t   H a n d l e
  * -------------------------
  * One complete cycle over the object table
@@ -400,8 +437,16 @@ objectEnd:			rts
  * O b j e c t   A n i m a t i o n
  * -------------------------------
  */
-objectAnimation:	nop
-					rts
+objectAnimation:	ldy #$0c			// read animation number
+					lda (ptrObject),y
+					beq objAnimEnd
+objAnim1:			cmp #$01
+					bne objAnim2
+					jsr animation1
+objAnim2:			cmp #$02
+					bne objAnimEnd
+					jsr animation2
+objAnimEnd:			rts
 
 
 
@@ -460,6 +505,41 @@ objectPlot:			nop
 					sta (ptrColor),y
 
 					rts
+
+
+
+/**
+ * A N I M A T I O N S
+ * -------------------
+ */
+
+// Animation 0 - do nothing. skipped anyway
+
+// Animation 1 - player movement
+animation1:			nop
+					rts
+
+
+// Animation 2 - no movement, just cycle the animation frames
+animation2:			ldy #$08			// read max phase
+					lda (ptrObject),y
+					sta bufPhase
+					ldy #$09			// read phase
+					lda (ptrObject),y
+					tax
+					inx
+					cpx bufPhase
+					bne anim21
+					ldx #$00
+anim21:				txa
+					sta (ptrObject),y
+					// copy nr of wait cycles to current cycle
+					ldy #$0e
+					lda (ptrObject),y
+					iny
+					sta (ptrObject),y
+					rts
+
 
 
 /**
