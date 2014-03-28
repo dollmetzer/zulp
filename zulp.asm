@@ -55,6 +55,10 @@ startProgram:		jsr initProgram
 					lda #$00
 					sta mode
 					jsr gameStart
+					
+					// just a quick test...
+					jsr objectHandle
+
 					// todo: wait for mode 0 and return to title
 					rts
 
@@ -176,7 +180,7 @@ headline:			.byte  154,147,151 // light blue, CLR, gray 1
  */
 loadLevel:			sta level
 					tay
-					lda levelPtrLo,y	// write base address of level in $f8/$f9
+					lda levelPtrLo,y	// write base address of level
 					sta ptrObject		// 'lending' the pointer for calculation
 					lda levelPtrHi,y
 					sta ptrObject+1
@@ -212,7 +216,7 @@ loadLevel:			sta level
 
 					// write pointer to object data
 					ldy level
-					lda levelPtrLo,y	// write base address of level in $f8/$f9
+					lda levelPtrLo,y	// write base address of object data
 					sta ptrObject		// 'lending' the pointer for calculation
 					lda levelPtrHi,y
 					sta ptrObject+1
@@ -305,10 +309,157 @@ copyObjectTable1:	lda (ptrObject),y
 					dex
 					bne copyObjectTable
 
-// missing: x and y offset map/screen correction
+					// x and y offset map/screen correction
+					// mapOffsetX
+					lda #<objectTable	// Start of the objectlist
+					sta ptrObject
+					lda #>objectTable
+					sta ptrObject+1
+					lda #$00			// first object
+					sta bufObjectCount
+
+correctObjOffset:	ldy #$01	// xpos
+					clc
+					lda (ptrObject),y
+					adc mapOffsetX
+					sta (ptrObject),y
+					ldy #$02	// ypos
+					clc
+					lda (ptrObject),y
+					adc mapOffsetY
+					sta (ptrObject),y
+					
+					clc					// calc start of next object list
+					lda ptrObject
+					adc #$10
+					sta ptrObject
+					lda ptrObject+1
+					adc #$00
+					sta ptrObject+1
+					// next object or end of correction
+					inc bufObjectCount
+					lda bufObjectCount
+					cmp #$10
+					bne correctObjOffset
 
 					rts
 
+
+
+/**
+ * O b j e c t   H a n d l e
+ * -------------------------
+ * One complete cycle over the object table
+ */
+objectHandle:		lda #<objectTable	// Start of the objectlist
+					sta ptrObject
+					lda #>objectTable
+					sta ptrObject+1
+					lda #$00			// first object
+					sta bufObjectCount
+
+objectLoop:			ldy #$00			// read state
+					lda (ptrObject),y	// check state active
+					and #$01
+					beq objectNext		// if not active, skip object
+
+					ldy #$0f			// read number of phases to skip
+					lda (ptrObject),y
+					beq objectLoop1
+					sec					// reduce phases to skip and end this object
+					sbc #$01		
+					sta (ptrObject),y
+					jmp objectLoop2				
+
+objectLoop1:		jsr objectAnimation	// animate object
+
+objectLoop2:		ldy #$00			// read state
+					lda (ptrObject),y	// check state visible
+					and #$02			
+					beq objectNext		// if not visible, skip object
+
+					jsr objectPlot		// plot object
+
+objectNext:			clc					// calc start of next object list
+					lda ptrObject
+					adc #$10
+					sta ptrObject
+					lda ptrObject+1
+					adc #$00
+					sta ptrObject+1
+					inc bufObjectCount	// skip to next object
+					lda bufObjectCount
+					cmp #$10
+					bne objectLoop
+
+objectEnd:			rts
+
+
+
+/**
+ * O b j e c t   A n i m a t i o n
+ * -------------------------------
+ */
+objectAnimation:	nop
+					rts
+
+
+
+/**
+ * O b j e c t   P l o t
+ * ---------------------
+ *
+ */
+objectPlot:			nop
+					// --- start calculate tilenumber
+					// Tilenumer = Basetile + shift[direction] + phase*2
+					ldy #$09			// read phase
+					lda (ptrObject),y
+					asl					// phase * 2
+					sta bufTile
+
+					ldy #$0a			// read direction
+					clc
+					lda (ptrObject),y
+					adc #$04			// get shift[direction]
+					tay
+					clc
+					lda (ptrObject),y
+					adc bufTile
+					sta bufTile
+				
+					ldy #$03			// read basetile
+					clc
+					lda (ptrObject),y
+					adc bufTile
+					sta bufTile			// now we have our current tile
+					// --- end calculate tilenumber
+
+					ldy #$02			// read y pos
+					lda (ptrObject),y
+					tay
+					lda screenLinesLo,y	// get memory of the line beginning
+					sta ptrScreen
+					lda screenLinesHi,y
+					sta ptrScreen+1
+					lda colorLinesLo,y	// get memory of the line beginning
+					sta ptrColor
+					lda colorLinesHi,y
+					sta ptrColor+1
+
+					ldy #$01			// read x pos
+					lda (ptrObject),y
+					sta	bufPosX			// rescue xpos for color setting
+					tay
+					lda bufTile			// get tilenumerber
+					sta (ptrScreen),y
+
+					ldy #$0b			// read color
+					lda (ptrObject),y
+					ldy bufPosX			// restore x pos
+					sta (ptrColor),y
+
+					rts
 
 
 /**

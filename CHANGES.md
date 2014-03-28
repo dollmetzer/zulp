@@ -1,6 +1,10 @@
 CHANGES
 =======
 
+*2014-03-28*  Object Handling Loop and Object Plot working
+
+*2014-03-28*  map offset correction for object X and Y position
+
 *2014-03-28*  Build level now also copies object data
 
 *2014-03-28*  Build level centered on game screen
