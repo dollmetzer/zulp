@@ -516,7 +516,178 @@ objectPlot:			nop
 // Animation 0 - do nothing. skipped anyway
 
 // Animation 1 - player movement
-animation1:			nop
+animation1:			ldx $dc00   	// read joystick 2
+
+					// determine start of line of the object
+					ldy #$02		// read ypos
+					lda (ptrObject),y
+					tay
+					lda screenLinesLo,y
+					sta ptrScreen
+					lda screenLinesHi,y
+					sta ptrScreen+1
+
+joyUp:				txa
+					and #$01		// check bit 1 - up
+					bne joyDown		// not up - next check down
+					ldy #$0a		// read direction
+					lda (ptrObject),y
+					//cmp #$02
+					bne joyUp1		// skip move, when changing direction
+
+					// delete current position
+					ldy #$01		// read xpos
+					lda (ptrObject),y
+					tay
+					lda #$40		// delete current position
+					sta (ptrScreen),y
+
+					// calculate new position
+					ldy #$02		// read ypos
+					lda (ptrObject),y
+					sec
+					sbc #$01
+					sta (ptrObject),y
+					jmp joyUp2
+
+joyUp1:				lda #$00		// direction up
+					sta (ptrObject),y
+
+					// copy nr of wait cycles to current cycle
+joyUp2:				ldy #$0e
+					lda (ptrObject),y
+					iny
+					sta (ptrObject),y
+					jmp joyFire
+
+
+joyDown:			txa
+					and #$02		// check bit 2 - down
+					bne joyLeft
+					ldy #$0a		// read direction
+					lda (ptrObject),y
+					cmp #$02
+					bne joyDown1	// skip move, when changing direction
+
+					// delete current position
+					ldy #$01		// read xpos
+					lda (ptrObject),y
+					tay
+					lda #$40		// delete current position
+					sta (ptrScreen),y
+
+					// calculate new position
+					ldy #$02		// read ypos
+					lda (ptrObject),y
+					clc
+					adc #$01
+					sta (ptrObject),y
+					jmp joyDown2
+
+joyDown1:			lda #$02		// direction down
+					sta (ptrObject),y
+
+					// copy nr of wait cycles to current cycle
+joyDown2:			ldy #$0e
+					lda (ptrObject),y
+					iny
+					sta (ptrObject),y
+					jmp joyFire
+
+
+joyLeft:			txa
+					and #$04		// check bit 3
+					bne joyRight
+					ldy #$0a		// read direction
+					lda (ptrObject),y
+					cmp #$03
+					bne joyLeft1	// skip move, when changing direction
+
+					// delete current position
+					ldy #$01		// read xpos
+					lda (ptrObject),y
+					tay
+					lda #$40		// delete current position
+					sta (ptrScreen),y
+
+					// calculate new position
+					ldy #$01		// read xpos
+					lda (ptrObject),y
+					sec
+					sbc #$01
+
+					//check, if tile on new position is 64
+					tay
+					lda (ptrScreen),y
+					sta 1024
+					cmp #64		// is space?
+					bne joyRight	// as long as no collision detection
+					tya
+					ldy #$01		// store in xpos
+
+					sta (ptrObject),y
+					jmp joyLeft2
+
+joyLeft1:			lda #$03		// direction left
+					sta (ptrObject),y
+
+					// copy nr of wait cycles to current cycle
+joyLeft2:			ldy #$0e
+					lda (ptrObject),y
+					iny
+					sta (ptrObject),y
+					jmp joyFire
+
+
+joyRight:			txa
+					and #$08
+					bne joyFire
+					ldy #$0a		// read direction
+					lda (ptrObject),y
+					cmp #$01
+					bne joyRight1	// skip move, when changing direction
+
+					// delete current position
+					ldy #$01		// read xpos
+					lda (ptrObject),y
+					tay
+					lda #$40		// delete current position
+					sta (ptrScreen),y
+
+					// calculate new position
+					ldy #$01		// read xpos
+					lda (ptrObject),y
+					clc
+					adc #$01
+
+
+					//check, if tile on new position is 64
+					tay
+					lda (ptrScreen),y
+					sta 1024
+					cmp #64		// is space?
+					bne joyFire	// as long as no collision detection
+					tya
+					ldy #$01		// store in xpos
+
+					sta (ptrObject),y
+					jmp joyRight2
+
+joyRight1:			lda #$01		// direction right
+					sta (ptrObject),y
+					// copy nr of wait cycles to current cycle
+joyRight2:			ldy #$0e
+					lda (ptrObject),y
+					iny
+					sta (ptrObject),y
+					//jmp joyFire
+
+
+joyFire:			txa
+					and #$10		// check bit 5 - fire button
+					bne joyEnd
+
+joyEnd:				nop
 					rts
 
 
@@ -711,8 +882,8 @@ levelObjects2:		.byte   5	// 5 objects
 
 levelObjects3:		.byte   9	// 5 objects
 					.byte   3,  7,  3,128,  0,  4,  8, 12,  1,  0,  0,  1,  1,  0,  4,  0 // player
-					.byte   3,  1,  2,144,  0,  0,  0,  0,  4,  0,  0,  2,  2,  0,  5,  0 // object 2
-					.byte   3,  1,  4,144,  0,  0,  0,  0,  4,  0,  0,  3,  2,  0,  5,  0 // object 3
+					.byte   3,  1,  2,144,  0,  0,  0,  0,  4,  0,  0,  3,  2,  0,  5,  0 // object 2
+					.byte   3,  1,  4,144,  0,  0,  0,  0,  4,  0,  0,  2,  2,  0,  5,  0 // object 3
 					.byte   3, 13,  4,145,  0,  0,  0,  0,  4,  0,  0,  3,  2,  0,  5,  0 // object 4
 					.byte   3, 13,  2,145,  0,  0,  0,  0,  4,  0,  0,  2,  2,  0,  5,  0 // object 5
 					.byte   3,  3,  5,145,  0,  0,  0,  0,  4,  0,  0,  2,  2,  0,  5,  0 // object 6

@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+*2014-03-28*  Player movement up/down/left/right working
+
 *2014-03-28*  Object Animation loop working
 
 *2014-03-28*  Object Handling Loop and Object Plot working
