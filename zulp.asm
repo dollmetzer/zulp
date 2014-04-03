@@ -20,6 +20,10 @@
 .var screenColor	= $d800	// start of color memory
 
 // zeropage variables
+.var pointer		= $ea	// $ea/$eb is an universal pointer in subroutines 
+.var newPosX		= $ec	// new calculated X position
+.var newPosY		= $ed	// new calculated Y position
+.var placeholder	= $ee	// currently unused
 .var bufPhase		= $ef	// current animation phase
 .var mapWidth		= $f0	// width of the current game map
 .var mapHeight		= $f1	// height of the current game map
@@ -33,6 +37,10 @@
 .var ptrScreen		= $fa	// $fa/$fb points to current screen line
 .var ptrColor		= $fc	// $fc/$fd points to current color line
 .var ptrObject		= $fe	// $fe/$ff points to current object
+
+.var bufferA		= $030c	// Buffer for Akku on SYS call
+.var bufferX		= $030d	// Buffer for X-Register on SYS call
+.var bufferY		= $030e	// Buffer for Y-Register on SYS call
 
 
 
@@ -535,6 +543,22 @@ joyUp:				txa
 					//cmp #$02
 					bne joyUp1		// skip move, when changing direction
 
+					// calculate new position
+					ldy #$01		// read xpos
+					lda (ptrObject),y
+					sta newPosX
+					ldy #$02		// read ypos
+					lda (ptrObject),y
+					sec
+					sbc #$01
+					sta newPosY
+
+					// read tilenumber on new position
+					jsr getTileNumber
+					cmp #64			// is empty?
+					bne joyLeft
+
+					// everything fine - we move
 					// delete current position
 					ldy #$01		// read xpos
 					lda (ptrObject),y
@@ -543,10 +567,8 @@ joyUp:				txa
 					sta (ptrScreen),y
 
 					// calculate new position
-					ldy #$02		// read ypos
-					lda (ptrObject),y
-					sec
-					sbc #$01
+					lda newPosY
+					ldy #$02		// ypos
 					sta (ptrObject),y
 					jmp joyUp2
 
@@ -569,6 +591,22 @@ joyDown:			txa
 					cmp #$02
 					bne joyDown1	// skip move, when changing direction
 
+					// calculate new position
+					ldy #$01		// read xpos
+					lda (ptrObject),y
+					sta newPosX
+					ldy #$02		// read ypos
+					lda (ptrObject),y
+					clc
+					adc #$01
+					sta newPosY
+
+					// read tilenumber on new position
+					jsr getTileNumber
+					cmp #64			// is empty?
+					bne joyLeft
+
+					// everything fine - we move
 					// delete current position
 					ldy #$01		// read xpos
 					lda (ptrObject),y
@@ -577,10 +615,8 @@ joyDown:			txa
 					sta (ptrScreen),y
 
 					// calculate new position
-					ldy #$02		// read ypos
-					lda (ptrObject),y
-					clc
-					adc #$01
+					lda newPosY
+					ldy #$02		// ypos
 					sta (ptrObject),y
 					jmp joyDown2
 
@@ -603,6 +639,22 @@ joyLeft:			txa
 					cmp #$03
 					bne joyLeft1	// skip move, when changing direction
 
+					// calculate new position
+					ldy #$01		// read xpos
+					lda (ptrObject),y
+					sec
+					sbc #$01
+					sta newPosX
+					ldy #$02		// read ypos
+					lda (ptrObject),y
+					sta newPosY
+
+					// read tilenumber on new position
+					jsr getTileNumber
+					cmp #64			// is empty?
+					bne joyFire
+
+					// everything fine - we move
 					// delete current position
 					ldy #$01		// read xpos
 					lda (ptrObject),y
@@ -611,20 +663,8 @@ joyLeft:			txa
 					sta (ptrScreen),y
 
 					// calculate new position
+					lda newPosX
 					ldy #$01		// read xpos
-					lda (ptrObject),y
-					sec
-					sbc #$01
-
-					//check, if tile on new position is 64
-					tay
-					lda (ptrScreen),y
-					sta 1024
-					cmp #64		// is space?
-					bne joyRight	// as long as no collision detection
-					tya
-					ldy #$01		// store in xpos
-
 					sta (ptrObject),y
 					jmp joyLeft2
 
@@ -647,6 +687,22 @@ joyRight:			txa
 					cmp #$01
 					bne joyRight1	// skip move, when changing direction
 
+					// calculate new position
+					ldy #$01		// read xpos
+					lda (ptrObject),y
+					clc
+					adc #$01
+					sta newPosX
+					ldy #$02		// read ypos
+					lda (ptrObject),y
+					sta newPosY
+
+					// read tilenumber on new position
+					jsr getTileNumber
+					cmp #64			// is empty?
+					bne joyFire
+
+					// everything fine - we move
 					// delete current position
 					ldy #$01		// read xpos
 					lda (ptrObject),y
@@ -655,21 +711,8 @@ joyRight:			txa
 					sta (ptrScreen),y
 
 					// calculate new position
+					lda newPosX
 					ldy #$01		// read xpos
-					lda (ptrObject),y
-					clc
-					adc #$01
-
-
-					//check, if tile on new position is 64
-					tay
-					lda (ptrScreen),y
-					sta 1024
-					cmp #64		// is space?
-					bne joyFire	// as long as no collision detection
-					tya
-					ldy #$01		// store in xpos
-
 					sta (ptrObject),y
 					jmp joyRight2
 
@@ -711,6 +754,24 @@ anim21:				txa
 					sta (ptrObject),y
 					rts
 
+
+
+/**
+ * Returns the number of a tile on newPosX/NewPosY in A
+ */
+getTileNumber:		sty bufferY			// Rescue registers in SYS call buffer
+
+					ldy newPosY			// get pointer to screen line
+					lda screenLinesLo,y
+					sta pointer
+					lda screenLinesHi,y
+					sta pointer+1
+
+					ldy newPosX			// get tilenumber
+					lda (pointer),y
+
+					ldy bufferY			// Restore register from SYS call buffer
+					rts
 
 
 /**

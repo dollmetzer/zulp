@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+*2014-04-03*  Introduced getTileNumber for collision detection. Player stops on collision
+
 *2014-03-28*  Player movement up/down/left/right working
 
 *2014-03-28*  Object Animation loop working
