@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+*2014-04-08*  Added collision detection on objects
+
 *2014-04-08*  Split code in multiple files
 
 *2014-04-03*  Introduced getTileNumber for collision detection. Player stops on collision

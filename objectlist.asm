@@ -1,3 +1,15 @@
+/*
+ * Z U L P
+ * =======
+ *
+ * A small maze game for the Commodore 64
+ * (c) 2014 Dirk Ollmetzer, www.ollmetzer.com 
+ * License: GPL V3.0
+ *
+ * Object lists for all levels
+ */
+
+
 levelObjPtrLo:		.byte <levelObjects1
 					.byte <levelObjects2
 					.byte <levelObjects3
@@ -28,8 +40,8 @@ levelObjPtrHi:		.byte >levelObjects1
  */
 levelObjects1:		.byte   5	// 3 objects
 					.byte   3,  8,  2,128,  0,  4,  8, 12,  1,  0,  0,  1,  1,  0,  4,  0 // player
-					.byte   3,  4,  2,144,  0,  0,  0,  0,  4,  0,  0,  2,  2,  0,  4,  0 // object 2
-					.byte   3, 12,  2,145,  0,  0,  0,  0,  4,  0,  0,  3,  2,  0,  4,  0 // object 4
+					.byte   3,  4,  2,144,  0,  0,  0,  0,  4,  0,  0,  2,  2,  1,  4,  0 // object 2
+					.byte   3, 12,  2,145,  0,  0,  0,  0,  4,  0,  0,  3,  2,  2,  4,  0 // object 4
 
 levelObjects2:		.byte   5	// 5 objects
 					.byte   3,  8,  4,128,  0,  4,  8, 12,  1,  0,  0,  1,  1,  0,  4,  0 // player

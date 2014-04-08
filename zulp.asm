@@ -515,9 +515,12 @@ objectPlot:			nop
 					rts
 
 
-// objectlists for levels
+// animation routines
 .import source "animation.asm"
 
+
+// collision routines
+.import source "collision.asm"
 
 
 /**
