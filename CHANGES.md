@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+*2014-04-08*  Split code in multiple files
+
 *2014-04-03*  Introduced getTileNumber for collision detection. Player stops on collision
 
 *2014-03-28*  Player movement up/down/left/right working
