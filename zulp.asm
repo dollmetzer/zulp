@@ -120,7 +120,7 @@ titleScreen:		.byte 154,147 // light blue, CLR
  * G a m e   s t a r t
  * -------------------
  */
-gameStart:			lda #$00		// reset level
+gameStart:			lda #$02		// reset level
 					sta level
 					sta freight		// reset freight
 					sta score		// reset score
@@ -463,7 +463,16 @@ objAnimEnd:			rts
  * ---------------------
  *
  */
-objectPlot:			nop
+objectPlot:			ldy bufObjectCount		// load object number
+					lda objPosTableLo,y
+					sta objectPlot1+1
+					lda objPosTableHi,y
+					sta objectPlot1+2
+					lda objPosTableX,y
+					tay
+					lda #64
+objectPlot1:		sta $0000,y				// delete object on last position
+
 					// --- start calculate tilenumber
 					// Tilenumer = Basetile + shift[direction] + phase*2
 					ldy #$09			// read phase
@@ -495,6 +504,7 @@ objectPlot:			nop
 					sta ptrScreen
 					lda screenLinesHi,y
 					sta ptrScreen+1
+			
 					lda colorLinesLo,y	// get memory of the line beginning
 					sta ptrColor
 					lda colorLinesHi,y
@@ -511,6 +521,15 @@ objectPlot:			nop
 					lda (ptrObject),y
 					ldy bufPosX			// restore x pos
 					sta (ptrColor),y
+
+					// save pointer to screen adress
+					tya
+					ldy bufObjectCount
+					sta objPosTableX,y
+					lda ptrScreen
+					sta objPosTableLo,y
+					lda ptrScreen+1
+					sta objPosTableHi,y
 
 					rts
 
@@ -536,6 +555,10 @@ score:				.byte $00, $00, $00	// BCD coded game score
 objectNumber:		.byte $00			// Number of objects in current level
 
 objectTable:		.fill 256, 0		// 16 Objects with 16 Bytes
+
+objPosTableLo:		.fill 16,0			// Lo Bytes of line start
+objPosTableHi:		.fill 16,0			// Hi Bytes of line start
+objPosTableX:		.fill 16,0			// X Offset
 
 screenLinesLo:		.byte <1104
 					.byte <1144

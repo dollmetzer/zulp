@@ -48,22 +48,15 @@ joyUp:				txa
 					beq joyUp2
 					cmp #128
 					bcs joyUp1			// branch if tile >= 128 (object)
-					jmp joyLeft			// no object, but border. stop here
+					jmp joyFire			// no object, but border. stop here
 joyUp1:				jsr getObjectAt		// get numer of collision object
 					jsr getCollisionNr	// get collision code
 					jsr objectCollision
-					jmp joyLeft
+					jmp joyFire
 
 					// everything fine - we move
-					// delete current position
-joyUp2:				ldy #$01			// read xpos
-					lda (ptrObject),y
-					tay
-					lda #$40			// delete current position
-					sta (ptrScreen),y
-
-					// calculate new position
-					lda newPosY
+					// set new position
+joyUp2:				lda newPosY
 					ldy #$02			// ypos
 					sta (ptrObject),y
 					jmp joyUp4
@@ -103,23 +96,16 @@ joyDown:			txa
 					beq joyDown2
 					cmp #128
 					bcs joyDown1		// branch if tile >= 128 (object)
-					jmp joyLeft			// no object, but border. stop here
+					jmp joyFire			// no object, but border. stop here
 joyDown1:			jsr getObjectAt		// get numer of collision object
 					jsr getCollisionNr	// get collision code
 					jsr objectCollision
-					jmp joyLeft
+					jmp joyFire
 					
 
 					// everything fine - we move
-					// delete current position
-joyDown2:			ldy #$01			// read xpos
-					lda (ptrObject),y
-					tay
-					lda #$40			// delete current position
-					sta (ptrScreen),y
-
-					// calculate new position
-					lda newPosY
+					// set new position
+joyDown2:			lda newPosY
 					ldy #$02			// ypos
 					sta (ptrObject),y
 					jmp joyDown4
@@ -166,15 +152,8 @@ joyLeft1:			jsr getObjectAt		// get numer of collision object
 					jmp joyFire
 
 					// everything fine - we move
-					// delete current position
-joyLeft2:			ldy #$01			// read xpos
-					lda (ptrObject),y
-					tay
-					lda #$40			// delete current position
-					sta (ptrScreen),y
-
-					// calculate new position
-					lda newPosX
+					// set new position
+joyLeft2:			lda newPosX
 					ldy #$01			// read xpos
 					sta (ptrObject),y
 					jmp joyLeft4
@@ -221,15 +200,8 @@ joyRight1:			jsr getObjectAt		// get numer of collision object
 					jmp joyFire
 
 					// everything fine - we move
-					// delete current position
-joyRight2:			ldy #$01			// read xpos
-					lda (ptrObject),y
-					tay
-					lda #$40			// delete current position
-					sta (ptrScreen),y
-
-					// calculate new position
-					lda newPosX
+					// set new position
+joyRight2:			lda newPosX
 					ldy #$01			// read xpos
 					sta (ptrObject),y
 					jmp joyRight4
@@ -305,11 +277,11 @@ getTileNumber:		sty bufferY			// Rescue registers in SYS call buffer
 getObjectAt:		sty bufferY
 					stx bufferX
 					
-					lda #<objectTable	// Start of the objectlist
+					lda #<objectTable+16	// Start of the objectlist - skip player
 					sta pointer
-					lda #>objectTable
+					lda #>objectTable+16
 					sta pointer+1
-					ldx #$00			// first object
+					ldx #$01			// first object (after player)
 
 getObjectAt1:		ldy #01				// x position
 					lda (pointer),y
@@ -334,6 +306,8 @@ getObjectAt2:		clc					// next object
 					inx
 					cpx #$10
 					bne getObjectAt1
+
+					sta collisionObjNr
 
 					ldx bufferX			// restore registers
 					ldy bufferY
@@ -365,6 +339,9 @@ getCollisionNr1:	clc
 
 					ldy #13				// collision code
 					lda (pointer),y
+
+					sta collisionNr
+					sta 1025
 
 					ldx bufferX
 					ldy bufferY
